@@ -8,11 +8,11 @@ LIB_HDRS := $(wildcard src/lib/*.h)
 LIB_OBJS := $(patsubst src/lib/%.c,$(OBJ)/lib/%.o,$(wildcard src/lib/*.c))
 LIBSG    := $(BUILD)/libsg.a
 
-BINS      := $(BUILD)/notify_openat
+BINS      := $(BUILD)/sg-launch $(BUILD)/notify_openat
 
 .PHONY: all test clean
 
-all: $(LIBSG) $(BINS)
+all: $(BINS)
 
 $(BUILD) $(OBJ)/lib:
 	mkdir -p $@
@@ -22,6 +22,9 @@ $(OBJ)/lib/%.o: src/lib/%.c $(LIB_HDRS) | $(OBJ)/lib
 
 $(LIBSG): $(LIB_OBJS)
 	$(AR) rcs $@ $^
+
+$(BUILD)/sg-launch: $(BUILD)/%: src/%.c $(LIBSG) $(LIB_HDRS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(LIBSG)
 
 $(BUILD)/notify_openat: examples/notify_openat.c | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $<
