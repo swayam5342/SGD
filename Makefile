@@ -38,6 +38,8 @@ $(BUILD)/notify_openat: examples/notify_openat.c | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $<
 
 test: all
+	@if command -v python3 >/dev/null; then python3 tests/test_analyze.py; \
+	 else echo "SKIP  python tests (python3 not found)"; fi
 	sh tests/notify_openat_test.sh
 
 clean:
