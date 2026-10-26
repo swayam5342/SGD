@@ -27,6 +27,22 @@ struct job *find_job(uint32_t id)
     return NULL;
 }
 
+struct job **jobs_by_id(size_t *count)
+{
+    struct job **v, *j;
+    size_t n = 0;
+
+    for (j = S.jobs; j; j = j->next)
+        n++;
+    v = calloc(n ? n : 1, sizeof *v);
+    if (!v)
+        die("calloc");
+    *count = n;
+    for (j = S.jobs; j; j = j->next)   /* S.jobs is newest first */
+        v[--n] = j;
+    return v;
+}
+
 struct pcb *pcb_get(struct job *j, pid_t pid)
 {
     struct pcb **head = &S.pcb[(unsigned)pid % PCB_BUCKETS], *p;

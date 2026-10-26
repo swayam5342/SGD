@@ -15,8 +15,9 @@
 
 #define TICK_MS 10
 #define PCB_BUCKETS 1024
+#define WAIT_BUCKETS 8
 
-enum ep_kind { EP_LISTEN, EP_CONN, EP_TIMER, EP_SIGNAL, EP_JOB };
+enum ep_kind { EP_LISTEN, EP_CONN, EP_TIMER, EP_SIGNAL, EP_JOB, EP_HTTP_LISTEN, EP_HTTP };
 
 struct stats {
     unsigned long long calls, allowed, waited, rejected, dropped;
@@ -64,6 +65,7 @@ struct sgd_config {
     int64_t fork_wait_ms;
     int64_t aging_ms;           /* waiting this long gains one priority level */
     unsigned qmax;
+    int metrics_port;
     const char *cost_file;
     int64_t reject_delay_ms;
     int64_t spin_us;
@@ -73,7 +75,7 @@ struct sgd_config {
 };
 
 struct sgd_state {
-    int ep, listen_fd, timer_fd, signal_fd;
+    int ep, listen_fd, timer_fd, signal_fd, http_fd;
     int64_t start_us;
     struct sg_bucket global;
     int64_t global_entitled;
@@ -92,6 +94,8 @@ struct sgd_state {
     size_t nrejects, rejects_cap;
     int64_t last_notify_us;
     struct stats total;         /* including jobs that have ended */
+    unsigned long long wait_hist[WAIT_BUCKETS + 1];   /* admitted calls by wait time */
+    long long wait_hist_sum_us;
     struct seccomp_notif_sizes sz;
     struct seccomp_notif *req;
     struct seccomp_notif_resp *resp;
@@ -100,17 +104,20 @@ struct sgd_state {
 
 extern struct sgd_config cfg;
 extern struct sgd_state S;
+extern const int64_t sg_wait_bounds_us[WAIT_BUCKETS];
 
 /* main.c */
 void die(const char *what);
 void ep_add(int fd, void *tag);
 double units(int64_t milli);
+void send_all(int fd, const char *buf, size_t len);
 
 /* job.c */
 struct job *job_new(const struct sg_register *reg, int lfd);
 void job_free(struct job *j);
 void end_job(struct job *j);
 struct job *find_job(uint32_t id);
+struct job **jobs_by_id(size_t *count);   /* oldest first; caller frees */
 struct pcb *pcb_get(struct job *j, pid_t pid);
 void refill(struct job *j, int64_t now);
 void global_refill(int64_t now);
@@ -129,5 +136,11 @@ void log_stats(const char *ev, const struct job *j, int pid, const struct stats 
 void log_loan(void *ctx, enum sg_loan_event ev, const struct sg_loan *l);
 void log_sgd(const char *ev);
 void log_flush(void);
+
+/* metrics.c */
+void write_metrics(FILE *out);
+int http_open(int port);
+void http_on_accept(void);
+void http_on_request(struct conn *c);
 
 #endif

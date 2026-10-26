@@ -2,11 +2,12 @@
  * sgd: the SyscallGuard supervisor.
  *
  * Each job registered by sg-launch brings a seccomp listener fd; sgd waits
- * on all of them, the registration socket and a 10 ms tick in one epoll
- * loop.
+ * on all of them, the registration socket, a 10 ms tick and the metrics
+ * port in one epoll loop.
  */
 #define _GNU_SOURCE
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/time.h>
 #include <sys/timerfd.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -45,7 +47,8 @@ struct sgd_config cfg = {
 
 struct sgd_state S;
 
-static enum ep_kind tag_listen = EP_LISTEN, tag_timer = EP_TIMER, tag_signal = EP_SIGNAL;
+static enum ep_kind tag_listen = EP_LISTEN, tag_timer = EP_TIMER, tag_signal = EP_SIGNAL,
+                    tag_http = EP_HTTP_LISTEN;
 
 void die(const char *what)
 {
@@ -64,6 +67,28 @@ void ep_add(int fd, void *tag)
 double units(int64_t milli)
 {
     return (double)milli / SG_MILLI;
+}
+
+/* Blocking write with a 1 s timeout, so a stuck client cannot stall sgd for long. */
+void send_all(int fd, const char *buf, size_t len)
+{
+    struct timeval tv = { .tv_sec = 1 };
+    int flags = fcntl(fd, F_GETFL);
+
+    if (flags >= 0)
+        fcntl(fd, F_SETFL, flags & ~O_NONBLOCK);
+    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+    while (len > 0) {
+        ssize_t n = write(fd, buf, len);
+
+        if (n < 0) {
+            if (errno == EINTR)
+                continue;
+            return;
+        }
+        buf += n;
+        len -= (size_t)n;
+    }
 }
 
 static void on_listen(void)
@@ -153,6 +178,8 @@ static void shutdown_all(void)
         job_free(S.jobs);
     }
     close(S.listen_fd);
+    if (S.http_fd >= 0)
+        close(S.http_fd);
     unlink(cfg.sock);
     global_refill(sg_now_us());
     log_sgd("sgd_stop");
@@ -173,7 +200,7 @@ static void usage(const char *argv0)
     fprintf(stderr,
             "usage: %s [-s sock] [-r rate] [-H burst_ms] [-T tmax_ms] [-F fork_wait_ms] [-a aging_ms] [-q qmax]\n"
             "          [-I idle_ms] [-B] [-k chunk_pct] [-R delay_ms] [-S spin_us] [-W]\n"
-            "          [-c costs] [-L] [-l log]\n"
+            "          [-m port] [-c costs] [-L] [-l log]\n"
             "  -s sock      listening socket (default /tmp/syscallguard-<uid>.sock)\n"
             "  -r rate      global budget R_g in cost units/s (default 200000)\n"
             "  -H burst_ms  burst horizon H: capacity = rate * H (default 1000)\n"
@@ -189,6 +216,7 @@ static void usage(const char *argv0)
             "  -S spin_us   keep polling this long after a notification before sleeping (default 0;\n"
             "               fastest round trip but burns CPU; turns synchronous wake-up off)\n"
             "  -W           do not request synchronous wake-ups (Linux 6.6+)\n"
+            "  -m port      serve Prometheus metrics on http://127.0.0.1:port/metrics\n"
             "  -c costs     load calibrated syscall costs (from tools/sg_calibrate.py)\n"
             "  -L           print the cost table in effect and exit\n"
             "  -l log       write a JSON-lines event log\n",
@@ -223,8 +251,9 @@ int main(int argc, char **argv)
     char err[256];
     int opt, list_costs = 0;
 
+    S.http_fd = -1;
     sg_default_sock(cfg.sock, sizeof cfg.sock);
-    while ((opt = getopt(argc, argv, "s:r:H:T:F:a:q:I:Bk:R:S:Wc:Ll:h")) != -1) {
+    while ((opt = getopt(argc, argv, "s:r:H:T:F:a:q:I:Bk:R:S:Wm:c:Ll:h")) != -1) {
         switch (opt) {
         case 's': snprintf(cfg.sock, sizeof cfg.sock, "%s", optarg); break;
         case 'r': cfg.global_rate = parse_pos(optarg, argv[0]); break;
@@ -243,6 +272,11 @@ int main(int argc, char **argv)
         case 'R': cfg.reject_delay_ms = parse_min(optarg, 0, argv[0]); break;
         case 'S': cfg.spin_us = parse_min(optarg, 0, argv[0]); break;
         case 'W': cfg.sync_wake = 0; break;
+        case 'm':
+            cfg.metrics_port = (int)parse_pos(optarg, argv[0]);
+            if (cfg.metrics_port > 65535)
+                usage(argv[0]);
+            break;
         case 'c':
             if (sg_load_costs(optarg, err, sizeof err) < 0) {
                 fprintf(stderr, "sgd: %s\n", err);
@@ -298,6 +332,12 @@ int main(int argc, char **argv)
     S.listen_fd = open_listener(cfg.sock);
     if (S.listen_fd < 0)
         die(cfg.sock);
+    if (cfg.metrics_port) {
+        S.http_fd = http_open(cfg.metrics_port);
+        if (S.http_fd < 0)
+            die("sgd: metrics port");
+        ep_add(S.http_fd, &tag_http);
+    }
 
     S.start_us = sg_now_us();
     sg_bucket_init(&S.global, cfg.global_rate, cfg.global_rate * cfg.burst_ms, S.start_us);
@@ -312,6 +352,8 @@ int main(int argc, char **argv)
             "[sgd] listening on %s: global %lld units/s, burst %lld ms, T_max %lld ms, borrowing %s, %s costs\n",
             cfg.sock, (long long)cfg.global_rate, (long long)cfg.burst_ms, (long long)cfg.tmax_ms,
             cfg.borrow.enabled ? "on" : "off", cfg.cost_file ? cfg.cost_file : "seed");
+    if (cfg.metrics_port)
+        fprintf(stderr, "[sgd] metrics on http://127.0.0.1:%d/metrics\n", cfg.metrics_port);
     fprintf(stderr,
             "[sgd] brief fork wait %lld ms, reject delay %lld ms, loan chunk %lld%%, spin %lld us, "
             "synchronous wake-up %s\n",
@@ -337,6 +379,12 @@ int main(int argc, char **argv)
                 break;
             case EP_CONN:
                 on_conn(tag);
+                break;
+            case EP_HTTP_LISTEN:
+                http_on_accept();
+                break;
+            case EP_HTTP:
+                http_on_request(tag);
                 break;
             case EP_TIMER:
                 on_tick();

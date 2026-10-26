@@ -18,6 +18,10 @@
 #define SECCOMP_USER_NOTIF_FLAG_CONTINUE (1UL << 0)
 #endif
 
+const int64_t sg_wait_bounds_us[WAIT_BUCKETS] = {
+    1000, 5000, 10000, 50000, 100000, 500000, 1000000, 2000000,
+};
+
 #define NOTE(j, p, field) ((j)->st.field++, (p)->st.field++, S.total.field++)
 
 static void note_wait_time(struct job *j, struct pcb *p, int64_t wait_us)
@@ -99,6 +103,8 @@ static int64_t wait_key(const struct job *j, int64_t arrive_us)
 
 static void admit(struct job *j, struct pcb *p, const struct sg_waiter *w, int64_t wait_us)
 {
+    int b = 0;
+
     sg_bucket_take(&j->acct.bucket, w->cost);
     sg_bucket_take(&S.global, w->cost);
     reply(j->lfd, w->id, 0);
@@ -107,6 +113,10 @@ static void admit(struct job *j, struct pcb *p, const struct sg_waiter *w, int64
     p->st.charged += w->cost;
     S.total.charged += w->cost;
     note_wait_time(j, p, wait_us);
+    while (b < WAIT_BUCKETS && wait_us > sg_wait_bounds_us[b])
+        b++;
+    S.wait_hist[b]++;
+    S.wait_hist_sum_us += wait_us;
     log_call(j, w->pid, w->nr, w->cls, w->cost, "ALLOW", wait_us);
 }
 
