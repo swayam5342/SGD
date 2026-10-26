@@ -74,6 +74,15 @@ void log_sgd(const char *ev)
             units(S.total.charged));
 }
 
+void log_change(const char *ev, const struct job *j, long long value)
+{
+    if (!cfg.log)
+        return;
+    fprintf(cfg.log, "{\"t_us\":%lld,\"ev\":\"%s\",\"job\":%u,\"value\":%lld,\"rate\":%lld}\n",
+            (long long)sg_now_us(), ev, j->acct.id, value, (long long)j->acct.bucket.rate);
+    fflush(cfg.log);
+}
+
 void log_flush(void)
 {
     if (cfg.log)

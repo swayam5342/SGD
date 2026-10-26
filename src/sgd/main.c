@@ -108,27 +108,38 @@ static void on_listen(void)
 
 static void on_conn(struct conn *c)
 {
-    struct sg_register reg;
+    union {
+        struct sg_register reg;
+        struct sg_ctl ctl;
+    } msg;
     struct sg_ack ack = { 0, 0 };
     int lfd;
-    ssize_t n = sg_recv_fd(c->fd, &reg, sizeof reg, &lfd);
+    ssize_t n = sg_recv_fd(c->fd, &msg, sizeof msg, &lfd);
 
     if (n < 0 && (errno == EAGAIN || errno == EINTR))
         return;
 
-    if (n != (ssize_t)sizeof reg || reg.magic != SG_PROTO_MAGIC || lfd < 0)
+    if (n == (ssize_t)sizeof msg.ctl && msg.ctl.magic == SG_CTL_MAGIC) {
+        if (lfd >= 0)
+            close(lfd);
+        ctl_handle(c->fd, &msg.ctl);
+        goto done;
+    }
+
+    if (n != (ssize_t)sizeof msg.reg || msg.reg.magic != SG_PROTO_MAGIC || lfd < 0)
         ack.status = -EPROTO;
-    else if (reg.prio < SG_PRIO_MIN || reg.prio > SG_PRIO_MAX || reg.rate < 0 ||
-             reg.fork_policy < 0 || reg.fork_policy >= SG_FORK_COUNT)
+    else if (msg.reg.prio < SG_PRIO_MIN || msg.reg.prio > SG_PRIO_MAX || msg.reg.rate < 0 ||
+             msg.reg.fork_policy < 0 || msg.reg.fork_policy >= SG_FORK_COUNT)
         ack.status = -EINVAL;
 
     if (ack.status == 0)
-        ack.job_id = job_new(&reg, lfd)->acct.id;
+        ack.job_id = job_new(&msg.reg, lfd)->acct.id;
     else if (lfd >= 0)
         close(lfd);   /* the launcher's costed calls now fail with ENOSYS */
 
     if (write(c->fd, &ack, sizeof ack) < 0)
         perror("sgd: ack");
+done:
     close(c->fd);
     free(c);
 }

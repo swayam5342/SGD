@@ -135,7 +135,11 @@ void log_call(const struct job *j, int pid, int nr, int cls, int64_t cost, const
 void log_stats(const char *ev, const struct job *j, int pid, const struct stats *st);
 void log_loan(void *ctx, enum sg_loan_event ev, const struct sg_loan *l);
 void log_sgd(const char *ev);
+void log_change(const char *ev, const struct job *j, long long value);
 void log_flush(void);
+
+/* ctl.c */
+void ctl_handle(int fd, const struct sg_ctl *ctl);
 
 /* metrics.c */
 void write_metrics(FILE *out);

@@ -10,7 +10,7 @@ SGD_HDRS := $(wildcard src/sgd/*.h)
 SGD_OBJS := $(patsubst src/sgd/%.c,$(OBJ)/sgd/%.o,$(wildcard src/sgd/*.c))
 LIBSG    := $(BUILD)/libsg.a
 
-BINS      := $(BUILD)/sgd $(BUILD)/sg-launch $(BUILD)/notify_openat
+BINS      := $(BUILD)/sgd $(BUILD)/sg-launch $(BUILD)/sgctl $(BUILD)/notify_openat
 
 .PHONY: all test clean
 
@@ -31,7 +31,7 @@ $(OBJ)/sgd/%.o: src/sgd/%.c $(SGD_HDRS) $(LIB_HDRS) | $(OBJ)/sgd
 $(BUILD)/sgd: $(SGD_OBJS) $(LIBSG)
 	$(CC) $(CFLAGS) -o $@ $^
 
-$(BUILD)/sg-launch: $(BUILD)/%: src/%.c $(LIBSG) $(LIB_HDRS)
+$(BUILD)/sg-launch $(BUILD)/sgctl: $(BUILD)/%: src/%.c $(LIBSG) $(LIB_HDRS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(LIBSG)
 
 $(BUILD)/notify_openat: examples/notify_openat.c | $(BUILD)

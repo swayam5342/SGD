@@ -37,6 +37,26 @@ struct sg_ack {
     uint32_t job_id;
 };
 
+/* sgctl -> sgd: one command per connection; sgd answers with text and closes. */
+
+#define SG_CTL_MAGIC 0x53474331u     /* "SGC1" */
+
+enum sg_ctl_cmd {
+    SG_CTL_STATUS = 1,
+    SG_CTL_LOANS,
+    SG_CTL_METRICS,
+    SG_CTL_SET_PRIO,
+    SG_CTL_SET_RATE,
+};
+
+struct sg_ctl {
+    uint32_t magic;
+    int32_t cmd;
+    uint32_t job;
+    int32_t reserved;
+    int64_t value;
+};
+
 void sg_default_sock(char *buf, size_t len);
 int sg_send_fd(int sock, const void *buf, size_t len, int fd);
 /* Returns bytes received; *fd is -1 if no descriptor came with them. */
