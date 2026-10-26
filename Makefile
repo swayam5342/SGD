@@ -12,7 +12,7 @@ LIBSG    := $(BUILD)/libsg.a
 
 BINS      := $(BUILD)/sgd $(BUILD)/sg-launch $(BUILD)/sgctl $(BUILD)/notify_openat
 
-.PHONY: all test clean
+.PHONY: all test calibrate clean
 
 all: $(BINS)
 
@@ -38,9 +38,14 @@ $(BUILD)/notify_openat: examples/notify_openat.c | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $<
 
 test: all
-	@if command -v python3 >/dev/null; then python3 tests/test_analyze.py; \
+	@if command -v python3 >/dev/null; then python3 tests/test_analyze.py && python3 tests/test_calibrate.py; \
 	 else echo "SKIP  python tests (python3 not found)"; fi
 	sh tests/notify_openat_test.sh
+
+# Measure syscall costs on this machine (needs root for bpftrace).
+calibrate: $(BUILD)/sgd
+	mkdir -p costs
+	sudo python3 tools/sg_calibrate.py -o costs/$$(uname -r).conf
 
 clean:
 	rm -rf $(BUILD)
