@@ -37,6 +37,7 @@ struct job {
     int lfd;
     int64_t fixed_rate;         /* 0 = proportional share */
     int fork_policy;            /* enum sg_fork_policy */
+    pid_t pgid;                 /* job's process group (sg-launch starts one); 0 until first seen */
     char name[64];
     struct sg_acct acct;
     uint64_t blocked_gen;       /* tick in which its oldest waiter could not be paid */

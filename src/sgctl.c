@@ -6,6 +6,7 @@
  *   sgctl [-s sock] metrics
  *   sgctl [-s sock] set-prio JOB PRIO
  *   sgctl [-s sock] set-rate JOB RATE     (RATE 0 = back to priority share)
+ *   sgctl [-s sock] kill JOB [SIGNUM]     (signal the job's processes; default SIGKILL)
  *
  * Exit status: 0 ok, 1 sgd reported an error, 2 usage, 3 sgd unreachable.
  */
@@ -23,7 +24,8 @@
 static void usage(const char *argv0)
 {
     fprintf(stderr,
-            "usage: %s [-s sock] status | loans | metrics | set-prio JOB PRIO | set-rate JOB RATE\n",
+            "usage: %s [-s sock] status | loans | metrics | set-prio JOB PRIO | set-rate JOB RATE | "
+            "kill JOB [SIGNUM]\n",
             argv0);
     exit(2);
 }
@@ -74,6 +76,14 @@ int main(int argc, char **argv)
         ctl.cmd = cmd[4] == 'p' ? SG_CTL_SET_PRIO : SG_CTL_SET_RATE;
         ctl.job = (uint32_t)job;
         ctl.value = parse_num(argv[optind + 2], argv[0]);
+    } else if (strcmp(cmd, "kill") == 0 && (nargs == 1 || nargs == 2)) {
+        long long job = parse_num(argv[optind + 1], argv[0]);
+
+        if (job < 1 || job > UINT32_MAX)
+            usage(argv[0]);
+        ctl.cmd = SG_CTL_KILL;
+        ctl.job = (uint32_t)job;
+        ctl.value = nargs == 2 ? parse_num(argv[optind + 2], argv[0]) : 0;   /* 0 = SIGKILL */
     } else {
         usage(argv[0]);
     }

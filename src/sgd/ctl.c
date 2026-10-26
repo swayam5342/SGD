@@ -1,5 +1,6 @@
 /* sgctl commands over the Unix socket. */
 #define _GNU_SOURCE
+#include <signal.h>
 #include <stdlib.h>
 
 #include "common.h"
@@ -62,7 +63,7 @@ void ctl_handle(int fd, const struct sg_ctl *ctl)
 
     if (!out)
         return;
-    if (ctl->cmd == SG_CTL_SET_PRIO || ctl->cmd == SG_CTL_SET_RATE) {
+    if (ctl->cmd == SG_CTL_SET_PRIO || ctl->cmd == SG_CTL_SET_RATE || ctl->cmd == SG_CTL_KILL) {
         j = find_job(ctl->job);
         if (!j) {
             fprintf(out, "error: no job %u\n", ctl->job);
@@ -103,6 +104,29 @@ void ctl_handle(int fd, const struct sg_ctl *ctl)
         fprintf(out, "ok: job %u (%s) %s rate %lld units/s\n", j->acct.id, j->name,
                 j->fixed_rate ? "fixed" : "share", (long long)j->acct.bucket.rate);
         break;
+    case SG_CTL_KILL: {
+        int sig = ctl->value ? (int)ctl->value : SIGKILL;
+        unsigned tasks = 0;
+        size_t i;
+        struct pcb *p;
+
+        if (sig < 1 || sig >= NSIG) {
+            fprintf(out, "error: signal must be 1..%d\n", NSIG - 1);
+            break;
+        }
+        /* The whole process group in one shot: reaches tasks that made no costed call. */
+        if (j->pgid > 0)
+            kill(-j->pgid, sig);
+        /* And each tracked task, covering any that left the group with setpgid. */
+        for (i = 0; i < PCB_BUCKETS; i++)
+            for (p = S.pcb[i]; p; p = p->next)
+                if (p->job == j && kill(p->pid, sig) == 0)
+                    tasks++;
+        log_change("kill", j, sig);
+        fprintf(out, "ok: signal %d to job %u (%s): process group %d, %u tracked task(s)\n",
+                sig, j->acct.id, j->name, (int)j->pgid, tasks);
+        break;
+    }
     default:
         fprintf(out, "error: unknown command %d\n", ctl->cmd);
     }

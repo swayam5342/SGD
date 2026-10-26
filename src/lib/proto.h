@@ -47,6 +47,7 @@ enum sg_ctl_cmd {
     SG_CTL_METRICS,
     SG_CTL_SET_PRIO,
     SG_CTL_SET_RATE,
+    SG_CTL_KILL,
 };
 
 struct sg_ctl {

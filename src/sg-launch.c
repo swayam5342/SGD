@@ -141,6 +141,8 @@ int main(int argc, char **argv)
         perror("sg-launch: PR_SET_NO_NEW_PRIVS");
         return 125;
     }
+    /* Own process group so sgd can signal the whole job (sgctl kill) at once. */
+    setpgid(0, 0);
     /* WAIT_KILLABLE_RECV (5.19+): a held call is not disturbed by non-fatal signals. */
     lfd = (int)syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER,
                        SECCOMP_FILTER_FLAG_NEW_LISTENER | SECCOMP_FILTER_FLAG_WAIT_KILLABLE_RECV, &prog);

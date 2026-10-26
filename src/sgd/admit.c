@@ -145,6 +145,11 @@ void on_notify(struct job *j)
         return;
     }
     p = pcb_get(j, (pid_t)S.req->pid);
+    if (j->pgid == 0) {
+        pid_t g = getpgid((pid_t)S.req->pid);   /* == the sg-launch leader's pid */
+        if (g > 0)
+            j->pgid = g;
+    }
     w = (struct sg_waiter){
         .key = wait_key(j, now),
         .id = S.req->id,
