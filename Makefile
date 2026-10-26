@@ -11,6 +11,7 @@ SGD_OBJS := $(patsubst src/sgd/%.c,$(OBJ)/sgd/%.o,$(wildcard src/sgd/*.c))
 LIBSG    := $(BUILD)/libsg.a
 
 BINS      := $(BUILD)/sgd $(BUILD)/sg-launch $(BUILD)/sgctl $(BUILD)/notify_openat
+TEST_BINS := $(BUILD)/unit_test $(BUILD)/forkn $(BUILD)/threadn $(BUILD)/bigmmap
 
 .PHONY: all test calibrate clean
 
@@ -37,10 +38,21 @@ $(BUILD)/sg-launch $(BUILD)/sgctl: $(BUILD)/%: src/%.c $(LIBSG) $(LIB_HDRS)
 $(BUILD)/notify_openat: examples/notify_openat.c | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $<
 
-test: all
+$(BUILD)/unit_test: tests/unit_test.c $(LIBSG) $(LIB_HDRS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(LIBSG)
+
+$(BUILD)/forkn $(BUILD)/bigmmap: $(BUILD)/%: tests/%.c | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(BUILD)/threadn: tests/threadn.c | $(BUILD)
+	$(CC) $(CFLAGS) -pthread -o $@ $<
+
+test: all $(TEST_BINS)
+	$(BUILD)/unit_test
 	@if command -v python3 >/dev/null; then python3 tests/test_analyze.py && python3 tests/test_calibrate.py; \
 	 else echo "SKIP  python tests (python3 not found)"; fi
 	sh tests/notify_openat_test.sh
+	sh tests/integration_test.sh
 
 # Measure syscall costs on this machine (needs root for bpftrace).
 calibrate: $(BUILD)/sgd
