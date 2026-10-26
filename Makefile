@@ -6,15 +6,17 @@ OBJ      := $(BUILD)/obj
 
 LIB_HDRS := $(wildcard src/lib/*.h)
 LIB_OBJS := $(patsubst src/lib/%.c,$(OBJ)/lib/%.o,$(wildcard src/lib/*.c))
+SGD_HDRS := $(wildcard src/sgd/*.h)
+SGD_OBJS := $(patsubst src/sgd/%.c,$(OBJ)/sgd/%.o,$(wildcard src/sgd/*.c))
 LIBSG    := $(BUILD)/libsg.a
 
-BINS      := $(BUILD)/sg-launch $(BUILD)/notify_openat
+BINS      := $(BUILD)/sgd $(BUILD)/sg-launch $(BUILD)/notify_openat
 
 .PHONY: all test clean
 
 all: $(BINS)
 
-$(BUILD) $(OBJ)/lib:
+$(BUILD) $(OBJ)/lib $(OBJ)/sgd:
 	mkdir -p $@
 
 $(OBJ)/lib/%.o: src/lib/%.c $(LIB_HDRS) | $(OBJ)/lib
@@ -22,6 +24,12 @@ $(OBJ)/lib/%.o: src/lib/%.c $(LIB_HDRS) | $(OBJ)/lib
 
 $(LIBSG): $(LIB_OBJS)
 	$(AR) rcs $@ $^
+
+$(OBJ)/sgd/%.o: src/sgd/%.c $(SGD_HDRS) $(LIB_HDRS) | $(OBJ)/sgd
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+$(BUILD)/sgd: $(SGD_OBJS) $(LIBSG)
+	$(CC) $(CFLAGS) -o $@ $^
 
 $(BUILD)/sg-launch: $(BUILD)/%: src/%.c $(LIBSG) $(LIB_HDRS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $< $(LIBSG)
