@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://swayam5342.github.io/SGD/sitemap.xml
+Sitemap: https://sdg.swayam.li/sitemap.xml

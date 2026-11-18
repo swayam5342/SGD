@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import KitScripts from '@/components/KitScripts';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://swayam5342.github.io/SGD/'),
+  metadataBase: new URL('https://sdg.swayam.li/'),
   title: 'SyscallGuard: system-call budgets for Linux jobs',
   description:
     'Give every Linux job a cost budget for its system calls. A seccomp supervisor allows, holds or rejects each costly call, with no kernel module.',
