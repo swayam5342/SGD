@@ -1,0 +1,89 @@
+/* Hallmark · v2.0.0 · shape: triptych hero, app-frame, 2x2, statement, split, questions, close · theme: custom via tasteskill deal (green-black-bone, Funnel) · genre: modern-minimal · signature: real sgctl and sgd output in the hero collage */
+/* critique: the page shows the tool's own terminal output where other sites put pictures; every figure is from the README */
+/* page CSS: only what sits inside a visual */
+.ly-collage { container-type: inline-size; }
+.ly-collage .ly-piece { box-shadow: 0 1px 2px var(--pc-shadow-near), 0 22px 48px -22px var(--pc-shadow-far); }
+.pc-term { background: var(--pc-bg); color: var(--pc-ink); border: 1px solid var(--pc-line); padding: 3cqw 3.2cqw; display: grid; align-content: start; gap: 1.2cqw; font: 400 max(13px, 1.9cqw)/1.45 var(--font-mono); overflow: hidden; }
+.pc-term .cmd { color: var(--pc-dim); }
+.pc-term .cmd b { color: var(--pc-ink); font-weight: 400; }
+.pc-term table { border-collapse: collapse; width: 100%; font: inherit; }
+.pc-term th { text-align: left; font-weight: 400; color: var(--pc-dim); padding: 0 1.4cqw .6cqw 0; }
+.pc-term td { padding: .6cqw 1.4cqw 0 0; white-space: nowrap; }
+.pc-term .ok { color: var(--pc-ok); }
+.pc-term .warn { color: var(--pc-warn); }
+.pc-term .ln, .pc-term .cmd { white-space: normal; overflow-wrap: anywhere; }
+.ly-collage .pc-card { background: var(--pc-paper); color: var(--pc-paper-ink); padding: 3.2cqw; display: grid; align-content: start; gap: 1.2cqw; font: 400 max(13px, 1.9cqw)/1.3 var(--font-text); }
+.pc-card .big { font: 400 5.4cqw/1 var(--font-display); letter-spacing: -0.03em; }
+.pc-card .mono { font-family: var(--font-mono); }
+.pc-card .opts { display: grid; gap: .8cqw; font-family: var(--font-mono); }
+.pc-card .opts span { display: flex; justify-content: space-between; gap: 2cqw; padding-top: .8cqw; border-top: 1px solid var(--pc-rule); }
+.pc-card .opts .on { font-weight: 500; }
+@media (max-width: 639px) { .pc-term .hide-sm { display: none; } }
+
+/* app-frame recipe (sections-library.md) */
+.app.ui { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); margin-top: var(--s-7); background: var(--u-bg); border: 1px solid var(--u-border); border-radius: var(--u-r); box-shadow: var(--u-shadow); }
+.app > .app__pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.app > .app__pane + .app__pane { border-left: 1px solid var(--u-line); }
+.app > .app__pane > .ui-panel { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
+.app > .app__pane::after { content: ""; position: absolute; inset: auto 0 0 0; height: 64px; background: linear-gradient(transparent, var(--u-bg)); pointer-events: none; }
+@media (min-width: 1024px) and (max-width: 1279px) { .app.ui { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); } }
+@media (max-width: 1023px) {
+  .app.ui { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .app > .app__pane--list { max-height: 252px; }
+  .app > .app__pane--list::after { display: none; }
+  .app .ui-win__side { display: none; }
+  .app .ui-win__body { grid-template-columns: minmax(0, 1fr); }
+  .app > .app__pane + .app__pane { border-left: 0; border-top: 1px solid var(--u-line); }
+}
+@media (max-width: 639px) {
+  .app.ui { grid-template-rows: minmax(0, 1fr); }
+  .app > .app__pane--list { display: none; }
+  .app > .app__pane + .app__pane { border-top: 0; }
+}
+
+#features .panel { --p-h: 300px; }
+.qs-icons { display: flex; flex-wrap: wrap; gap: var(--s-4); margin-top: var(--s-5); }
+.statement h2.mo-lt__type { text-wrap: balance; font-size: clamp(52px, 11vw, 176px); line-height: .96; max-width: 11ch; margin-bottom: var(--s-6); overflow-wrap: break-word; min-width: 0; }
+.statement .t-lead { max-width: 56ch; }
+@media (max-width: 639px) {
+  #features .panel { --p-h: 160px; }
+  .statement h2.mo-lt__type { font-size: 60px; }
+  .hero--triptych h1 { font-size: 34px; }
+}
+
+/* the bar keeps only the name and the action: the action ends on the right line */
+.nav__actions { margin-left: auto; }
+/* the calibration frame takes the screen beside its text */
+@media (min-width: 1024px) { #calibrate .frame--split { aspect-ratio: auto; height: min(620px, calc(100svh - 240px)); } }
+/* a phone draws the diagrams compact: icon tiles with their names under them on the light ground, set in dark ink */
+@media (max-width: 639px) { #features .dg-cap__l, #features .dg-cap__s { color: var(--pc-paper-ink); } }
+h1, h2 { text-wrap: balance; }
+
+/* Hallmark floor 34: no sideways scroll on either root */
+html, body { overflow-x: clip; }
+
+/* the job pane: the README's commands and sgctl status, set at a fixed size outside the collage */
+.pc-term--pane { height: 100%; border: 0; padding: var(--s-5); gap: var(--s-2); font-size: 13px; line-height: 1.5; }
+.pc-term--pane table { margin-top: var(--s-2); }
+.pc-term--pane th { padding: 0 var(--s-3) var(--s-1) 0; }
+.pc-term--pane td { padding: var(--s-1) var(--s-3) 0 0; }
+/* a whole output line in the job terminal runs the full row instead of the kit's file-name column */
+.app .ui-term__ln > .ui-term__path:only-child { grid-column: 1 / -1; overflow: visible; text-overflow: clip; white-space: pre; }
+.cc-short { display: none; }
+@media (max-width: 639px) {
+  /* the phone shows the cost lines as name, cost and seed */
+  .cc-full { display: none; }
+  .cc-short { display: inline; }
+  #calibrate .at-rise.to-edge { --w: 300px; }
+  /* the job command wraps instead of running past the terminal */
+  .app .ui-term__ln.ui-term__cmd { height: auto; white-space: normal; flex-wrap: wrap; }
+  .app .ui-term__typed { white-space: normal; overflow-wrap: anywhere; }
+  #features .panel { --p-h: 136px; }
+}
+@media (max-width: 639px) { #calibrate .ui-code__tab + .ui-code__tab { display: none; } }
+
+/* the use cases: each card's real command on a flush terminal panel */
+#uses .panel { --p-h: 200px; }
+#uses .pc-term--pane { overflow-wrap: anywhere; }
+/* a phone keeps each use's title and command on one screen; the intro above says what they share */
+@media (max-width: 639px) { #uses .panel { --p-h: auto; } #uses .card > p { display: none; } }
