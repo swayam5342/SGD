@@ -13,7 +13,7 @@ LIBSG    := $(BUILD)/libsg.a
 BINS      := $(BUILD)/sgd $(BUILD)/sg-launch $(BUILD)/sgctl $(BUILD)/notify_openat
 TEST_BINS := $(BUILD)/unit_test $(BUILD)/forkn $(BUILD)/threadn $(BUILD)/bigmmap
 
-.PHONY: all test calibrate clean
+.PHONY: all test calibrate clean sgtop tui-test
 
 all: $(BINS)
 
@@ -53,6 +53,13 @@ test: all $(TEST_BINS)
 	 else echo "SKIP  python tests (python3 not found)"; fi
 	sh tests/notify_openat_test.sh
 	sh tests/integration_test.sh
+
+# The live terminal view (needs Go 1.24+; optional, not part of all).
+sgtop: | $(BUILD)
+	cd tui && go build -o ../$(BUILD)/sgtop .
+
+tui-test:
+	cd tui && go test ./...
 
 # Measure syscall costs on this machine (needs root for bpftrace).
 calibrate: $(BUILD)/sgd

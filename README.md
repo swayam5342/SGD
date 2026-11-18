@@ -26,7 +26,7 @@ SyscallGuard gives each Linux job a budget for expensive system calls. Cost-base
 | :--- | :--- |
 | **Overview** | [What it's for](#what-its-for) &middot; [How it works](#how-it-works) &middot; [Requirements](#requirements) |
 | **Setup** | [Build and test](#build-and-test) &middot; [Usage](#usage) &middot; [Fork policies](#fork-policies) &middot; [sgd options](#sgd-options) |
-| **Operate** | [Inspecting and adjusting a running sgd](#inspecting-and-adjusting-a-running-sgd) &middot; [Calibrating costs](#calibrating-costs-needs-root) &middot; [Analysing a run](#analysing-a-run) |
+| **Operate** | [Inspecting and adjusting a running sgd](#inspecting-and-adjusting-a-running-sgd) &middot; [sgtop, the live view](#sgtop-the-live-view) &middot; [Calibrating costs](#calibrating-costs-needs-root) &middot; [Analysing a run](#analysing-a-run) |
 | **Reference** | [Borrowing](#borrowing) &middot; [Layout](#layout) &middot; [Design notes and limitations](#design-notes-and-limitations) &middot; [License](#license) |
 
 <br>
@@ -154,6 +154,29 @@ JOB  NAME           PRIO  MODE   RATE/S     TOKENS   CAPACITY WAIT    CALLS  ALL
 
 <br>
 
+## sgtop, the live view
+
+`sgtop` (in [tui/](tui/), written in Go) shows a running sgd and refreshes every second: the global bucket,
+one row per job with its budget bar, calls per second and state (waiting, borrowing, lending, rejecting),
+the selected job's call rate over time, and the outstanding loans. It talks to the same control socket as
+sgctl, so it needs no changes to sgd.
+
+```sh
+make sgtop                     # needs Go 1.24+; builds build/sgtop
+./build/sgtop                  # or: ./build/sgtop -s /path/to/sock -i 500ms
+```
+
+| Key | Does |
+| :--- | :--- |
+| up / down | select a job |
+| `+` / `-` | raise or lower its priority (`sgctl set-prio`) |
+| `r` | give it a fixed rate in units/s (`sgctl set-rate`) |
+| `s` | return a fixed-rate job to its priority share (`set-rate 0`) |
+| `k` / `t` | SIGKILL / SIGTERM its whole process group, after a y/n check (`sgctl kill`) |
+| `q` | quit |
+
+<br>
+
 ## Calibrating costs (needs root)
 
 The seed costs in [src/lib/costs.c](src/lib/costs.c) only rank the classes. `tools/sg_calibrate.py`
@@ -257,6 +280,7 @@ written-off events go to the event log:
 | [src/sg-launch.c](src/sg-launch.c) | job launcher (installs the filter, hands the listener to sgd) |
 | [src/sgctl.c](src/sgctl.c) | control client |
 | [examples/notify_openat.c](examples/notify_openat.c) | standalone example: log every openat() through user notification |
+| [tui/](tui/) | sgtop, the live terminal view (Go) |
 | [tools/sg_analyze.py](tools/sg_analyze.py) | metrics from the event log |
 | [tools/sg_calibrate.py](tools/sg_calibrate.py) | eBPF cost calibration |
 | [tests/](tests/) | unit, Python and integration tests |
