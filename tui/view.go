@@ -83,11 +83,17 @@ func (m model) globalView(w int) string {
 	return trunc(line1, w) + "\n" + trunc(line2, w)
 }
 
-const rowFmt = "%-4s %-14s %4s %-5s %7s %-12s %8s %5s %7s %7s %8s %8s %-6s %-10s"
+// BUDGET is the job's tokens left over its bucket's capacity, in cost units, then the same as a bar.
+const rowFmt = "%-4s %-14s %4s %-5s %7s %14s %-8s %8s %5s %7s %7s %7s %7s %-6s %-9s"
+
+// budget is "tokens/capacity" in cost units, one decimal for what is left, as sgctl status prints it.
+func budget(tokens, capacity float64) string {
+	return fmt.Sprintf("%.1f/%.0f", tokens, capacity)
+}
 
 func (m model) jobsView(w int) string {
 	var b strings.Builder
-	b.WriteString(sHead.Render(trunc(fmt.Sprintf(rowFmt, "JOB", "NAME", "PRIO", "MODE", "RATE/S", "BUDGET",
+	b.WriteString(sHead.Render(trunc(fmt.Sprintf(rowFmt, "JOB", "NAME", "PRIO", "MODE", "RATE/S", "BUDGET", "",
 		"CALLS/S", "HELD", "WAITED", "REJECT", "OWED", "LENT", "FORK", "STATE"), w)))
 	if len(m.st.Jobs) == 0 {
 		b.WriteString("\n" + sMuted.Render("no jobs: start one with sg-launch"))
@@ -106,7 +112,7 @@ func (m model) jobsView(w int) string {
 		}
 		// the budget bar is drawn plainly here so the selected row can take one colour
 		row := fmt.Sprintf(rowFmt, fmt.Sprint(j.ID), trunc(j.Name, 14), fmt.Sprint(j.Prio), mode, fmt.Sprint(j.Rate),
-			plainBar(j.Tokens, j.Capacity, 12), callRate, fmt.Sprint(j.Waiting), fmt.Sprint(j.Waited),
+			budget(j.Tokens, j.Capacity), plainBar(j.Tokens, j.Capacity, 8), callRate, fmt.Sprint(j.Waiting), fmt.Sprint(j.Waited),
 			fmt.Sprint(j.Rejected), fmt.Sprintf("%.1f", j.Owed), fmt.Sprintf("%.1f", j.Lent), j.Fork, state)
 		row = trunc(row, w)
 		b.WriteString("\n")

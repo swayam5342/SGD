@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -158,3 +159,15 @@ func TestRates(t *testing.T) {
 }
 
 func second(_ model, cmd tea.Cmd) tea.Cmd { return cmd }
+
+func TestJobRowShowsBudgetNumbers(t *testing.T) {
+	m := newModel(sgd.Client{}, time.Second)
+	m.width = 160
+	next, _ := m.Update(snapMsg{st: sgd.Status{Jobs: []sgd.Job{
+		{ID: 1, Name: "build", Prio: 8, Rate: 2400, Tokens: 2.8, Capacity: 2400, Fork: "brief"},
+	}}, at: time.Now()})
+	view := next.(model).View()
+	if !strings.Contains(view, "2.8/2400") {
+		t.Errorf("job row has no budget numbers:\n%s", view)
+	}
+}
