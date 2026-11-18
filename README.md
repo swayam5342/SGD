@@ -25,7 +25,7 @@ SyscallGuard gives each Linux job a budget for expensive system calls. Cost-base
 | | |
 | :--- | :--- |
 | **Overview** | [What it's for](#what-its-for) &middot; [How it works](#how-it-works) &middot; [Requirements](#requirements) |
-| **Setup** | [Build and test](#build-and-test) &middot; [Usage](#usage) &middot; [Fork policies](#fork-policies) &middot; [sgd options](#sgd-options) |
+| **Setup** | [Build and test](#build-and-test) &middot; [Usage](#usage) &middot; [Fork policies](#fork-policies) &middot; [sgd options](#sgd-options) &middot; [What works inside a job](#what-works-inside-a-job) |
 | **Operate** | [Inspecting and adjusting a running sgd](#inspecting-and-adjusting-a-running-sgd) &middot; [Calibrating costs](#calibrating-costs-needs-root) &middot; [Analysing a run](#analysing-a-run) |
 | **Reference** | [Borrowing](#borrowing) &middot; [Layout](#layout) &middot; [Design notes and limitations](#design-notes-and-limitations) &middot; [License](#license) |
 
@@ -125,6 +125,49 @@ job is short of budget:
 | `-m port` | serve Prometheus metrics on `http://127.0.0.1:port/metrics` | off |
 | `-l file` | JSON-lines event log (every decision, per-job and per-process stats) | off |
 | `-s path` | socket | `/tmp/syscallguard-<uid>.sock` |
+
+<br>
+
+## What works inside a job
+
+SyscallGuard charges calls to a job's budget; it does not block networking or sockets. What a job cannot
+do comes from how it is started: `sg-launch` sets `no_new_privs` before installing its filter
+([src/sg-launch.c](src/sg-launch.c)), which the kernel requires for an unprivileged seccomp filter, so
+nothing the job starts can gain privileges from setuid or file capabilities.
+
+| What the program does | Inside a job |
+| :--- | :--- |
+| Ordinary networking: TCP/UDP clients and servers, HTTP, DNS, Unix sockets, pipes | **Works.** `socket`, `connect`, `bind` and `accept` are charged as network setup; `sendto`, `recvfrom`, `read` and `write` as data; `sendmsg`/`recvmsg` are not charged. |
+| Gains rights when it starts: `ping` (file capability), `sudo`, `su`, `passwd`, packet capture such as `tcpdump` | **Blocked** by `no_new_privs`: `sudo` reports `The "no new privileges" flag is set`, `ping` reports `missing cap_net_raw+p capability`. |
+| Needs root anyway: `mount`, firewall rules, raw packets | **Fails**, as it does for the same user without SyscallGuard. |
+| Uses `io_uring` or `clone3` | `io_uring_setup` returns EPERM (one call could submit many operations past per-call accounting); `clone3` returns ENOSYS and glibc falls back to `clone`. |
+
+> [!TIP]
+> **`ping` inside a job.** Let your users send pings through ICMP datagram sockets, which need no capability:
+>
+> ```sh
+> sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
+> echo 'net.ipv4.ping_group_range = 0 2147483647' | sudo tee /etc/sysctl.d/99-ping.conf   # keep it after a reboot
+> ```
+>
+> `ping` then works inside a job; its `socket()` call is charged like any other.
+
+> [!IMPORTANT]
+> **Network calls can wait.** A job short of budget has its charged calls held, and a call held longer than
+> T_max (`sgd -T`, 2 s) fails with EAGAIN, which some programs treat as an error. Give network-heavy jobs
+> enough budget (`sg-launch -r 5000`, or a higher priority) or a longer T_max (`sgd -T 10000`).
+
+**A job that needs privileges:**
+
+- Prefer an unprivileged way to do it, like `ping_group_range` above.
+- Do the privileged step outside the job, before `sg-launch` or in a separate helper, and run only the
+  rest inside it.
+- As a last resort, run `sg-launch` as root: root's processes already hold every capability, so
+  `no_new_privs` takes nothing away, but everything in the job then runs as root.
+
+> [!CAUTION]
+> Do not remove `no_new_privs` from `sg-launch`: the kernel requires it for an unprivileged seccomp filter,
+> and it is what stops a job from leaving its limits through a setuid program.
 
 <br>
 
