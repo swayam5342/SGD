@@ -13,6 +13,7 @@ SyscallGuard gives each Linux job a budget for expensive system calls. Cost-base
 [![Arch](https://img.shields.io/badge/arch-x86--64%20%7C%20aarch64-9fc7b8?style=flat-square&labelColor=161c1a)](#requirements)
 [![Mechanism](https://img.shields.io/badge/mechanism-seccomp%20user%20notification-9fc7b8?style=flat-square&labelColor=161c1a)](#how-it-works)
 [![License](https://img.shields.io/badge/license-MIT-9fc7b8?style=flat-square&labelColor=161c1a)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/swayam5342/SGD/ci.yml?branch=main&style=flat-square&label=CI&logo=githubactions&logoColor=white&labelColor=161c1a)](https://github.com/swayam5342/SGD/actions/workflows/ci.yml)
 
 [**Website**](https://sdg.swayam.li/) &nbsp;&middot;&nbsp; [Usage](#usage) &nbsp;&middot;&nbsp; [sgctl](#inspecting-and-adjusting-a-running-sgd) &nbsp;&middot;&nbsp; [Calibration](#calibrating-costs-needs-root) &nbsp;&middot;&nbsp; [Borrowing](#borrowing) &nbsp;&middot;&nbsp; [Limitations](#design-notes-and-limitations)
 
